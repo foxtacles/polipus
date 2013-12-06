@@ -405,7 +405,6 @@ module Polipus
 
         Polipus::Plugin.plugins.each do |k,p|
           if p.respond_to? method
-            @logger.info("Running plugin method #{method} on #{k}")
             ret_val = p.send(method, self)
             instance_eval(&ret_val) if ret_val.kind_of? Proc
           end
