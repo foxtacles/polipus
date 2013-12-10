@@ -80,6 +80,7 @@ module Polipus
       @job_name     = job_name
       @options      = OPTS.merge(options)
       @logger       = @options[:logger] ||= Logger.new(nil)
+      @signal_handler = PolipusSignalHandler.new
 
       @storage      = @options[:storage]     ||= Storage.dev_null
 
@@ -121,7 +122,7 @@ module Polipus
     end
 
     def takeover
-      PolipusSignalHandler.enable
+      @signal_handler.enable
       overflow_items_controller if queue_overflow_adapter
 
       q = queue_factory
@@ -209,7 +210,7 @@ module Polipus
             @overflow_manager.perform if @overflow_manager && queue.empty?
             execute_plugin 'on_message_processed'
 
-            if PolipusSignalHandler.terminated?
+            if @signal_handler.terminated?
               @logger.info {"About to exit! Thanks for using Polipus"}
               queue.commit
               break
@@ -306,7 +307,7 @@ module Polipus
     # Request to Polipus to stop its work (gracefully)
     # cler_queue = true if you want to delete all of the pending urls to visit
     def stop!(cler_queue = false)
-      PolipusSignalHandler.terminate
+      @signal_handler.terminate
       queue_factory.clear(true) if cler_queue
     end
 
@@ -414,13 +415,12 @@ module Polipus
   end
 
   class PolipusSignalHandler
-    include Singleton
     attr_accessor :terminated
     def initialize
       self.terminated = false
     end
 
-    def self.enable
+    def enable
       trap(:INT)  {
         puts "Got INT signal"
         self.terminate
@@ -431,12 +431,12 @@ module Polipus
       }
     end
 
-    def self.terminate
-      self.instance.terminated = true
+    def terminate
+      self.terminated = true
     end
 
-    def self.terminated?
-      self.instance.terminated
+    def terminated?
+      self.terminated
     end
   end
 
