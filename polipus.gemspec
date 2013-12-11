@@ -30,6 +30,7 @@ Gem::Specification.new do |s|
   s.add_dependency "json",              "~> 1.8.0"
   s.add_dependency "aws-s3",            "~> 0.6.3"
   s.add_dependency "http-cookie",       "~> 1.0.1"
+  s.add_dependency "robotex",           "~> 1.0.0"
   
   s.add_development_dependency "rspec"
   s.add_development_dependency "vcr", "~> 2.5.0"
