@@ -149,7 +149,7 @@ module Polipus
         response = connection(url).request(req)
         finish = Time.now()
         response_time = ((finish - start) * 1000).round
-        cookie_jar.parse(response["Set-Cookie"], url) if accept_cookies?
+        cookie_jar.parse(response["set-cookie"], url) if accept_cookies? && response["set-cookie"]
         return response, response_time
       rescue Timeout::Error, Net::HTTPBadResponse, EOFError => e
         
