@@ -41,12 +41,14 @@ module Polipus
 
           end
           pages << Page.new(location, :body => response.body.dup,
-                                      :code => code,
-                                      :headers => response.to_hash,
-                                      :referer => referer,
-                                      :depth => depth,
-                                      :redirect_to => redirect_to,
-                                      :response_time => response_time)
+                                  :code => code,
+                                  :headers => response.to_hash,
+                                  :referer => referer,
+                                  :depth => depth,
+                                  :redirect_to => redirect_to,
+                                  :response_time => response_time,
+                                  :success_http_response_codes => @opts[:success_http_response_codes]
+                         )
         end
 
         return pages

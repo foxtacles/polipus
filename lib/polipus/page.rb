@@ -26,6 +26,9 @@ module Polipus
     attr_accessor :response_time
     # OpenStruct it holds users defined data
     attr_accessor :user_data
+    # HTTP status codes that are to be considered valid, can be overriden in
+    # case the page you are crawling behaves weird.
+    attr_accessor :success_http_response_codes
 
     attr_accessor :aliases
 
@@ -46,6 +49,7 @@ module Polipus
       @error = params[:error]
       @fetched = !params[:code].nil?
       @user_data = OpenStruct.new
+      @success_http_response_codes = params[:success_http_response_codes]
 
     end
 
@@ -172,6 +176,15 @@ module Polipus
     #
     def in_domain?(uri)
       uri.host == @url.host || uri.host == "www.#{@url.host}"
+    end
+
+    # Check if the page has valid http response codes.
+    def success_http_response?
+      if @success_http_response_codes
+        @success_http_response_codes.include?(@code)
+      else
+        (200..226).include?(@code)
+      end
     end
 
     def to_hash

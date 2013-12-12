@@ -60,8 +60,9 @@ module Polipus
       # Check the robots.txt of the website and respect pages that are to be
       # discarded
       :robots_checker => false,
-      # Count error pages torwards the page count of pages that were crawled.
-      :count_errors_in_page_count => true
+      # Valid http status codes. Others throw an error. false, or an array: [200, 201, 301].
+      # if false the default 2xx status codes are used for the check
+      :success_http_response_codes => false
     }
 
     attr_reader :storage
@@ -379,7 +380,7 @@ module Polipus
 
       # If stats enable, it increments pages downloaded
       def incr_pages
-        redis.incr "polipus:#{@job_name}:pages" if @options[:stats_enabled] && @options[:count_errors_in_page_count]
+        redis.incr "polipus:#{@job_name}:pages" if @options[:stats_enabled]
       end
 
       # It handles the overflow item policy (if any)
