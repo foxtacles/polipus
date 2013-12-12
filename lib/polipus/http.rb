@@ -11,7 +11,6 @@ module Polipus
     def initialize(opts = {})
       @connections = {}
       @opts = opts
-      @robots_checker = opts[:robots_checker]
     end
 
     #
@@ -30,9 +29,6 @@ module Polipus
       begin
         url = URI(url) unless url.is_a?(URI)
         pages = []
-        if url && @robots_checker && !@robots_checker.allowed?(url)
-          return [Page.new(url, :error => "ignored by robots.txt")]
-        end
         get(url, referer) do |response, code, location, redirect_to, response_time|
           body = response.body.dup
           if response.to_hash.fetch('content-encoding', [])[0] == 'gzip'

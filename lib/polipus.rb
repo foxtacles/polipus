@@ -60,8 +60,7 @@ module Polipus
       # Check the robots.txt of the website and respect pages that are to be
       # discarded
       :robots_checker => false,
-      # Valid http status codes. Others throw an error. false, or an array: [200, 201, 301].
-      # if false the default 2xx status codes are used for the check
+      # Valid http status codes. False to use default, or an array: [200, 201, 301].
       :success_http_response_codes => false
     }
 
@@ -191,7 +190,7 @@ module Polipus
             else
               page = pages.last
             end
-            
+
             # Execute on_before_save blocks
             @on_before_save.each {|e| e.call(page)} unless page.nil?
             execute_plugin 'on_after_download'
@@ -341,6 +340,11 @@ module Polipus
         # Check against url tracker
         if with_tracker
           return false if  url_tracker.visited?(@options[:include_query_string_in_saved_page] ? url.to_s : url.to_s.gsub(/\?.*$/,''))
+        end
+
+        # Check against robots.txt checker
+        if @options[:robots_checker] && !@options[:robots_checker].allowed?(url)
+          return false
         end
         true
       end
