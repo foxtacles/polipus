@@ -73,6 +73,10 @@ module Polipus
         abs = to_absolute(u) rescue next
         @links << abs if in_domain?(abs)
       end
+
+      # Check for meta redirects
+      meta_redirect = extract_meta_redirect
+      @links << meta_redirect if meta_redirect
       @links.to_a
     end
 
@@ -231,5 +235,32 @@ module Polipus
       hash = JSON.parse json
       self.from_hash hash
     end
+
+    # Some URLs have meta redirects. attempt to extract the redirect url.
+    # The redirects are usually in this format:
+    # <META HTTP-EQUIV="Refresh" CONTENT="0;URL=http://foo.com">
+    def extract_meta_redirect
+      redirect_tag = doc.search("//meta[@http-equiv='refresh' or @http-equiv='Refresh' or @http-equiv='REFRESH']").first
+      return if redirect_tag.nil?
+      # Returns something like 0;URL=http://foo.com
+      redirect_string = redirect_tag["content"]
+      return if !redirect_string.is_a?(String)
+      parse_meta_redirect_string(redirect_string)
+    end
+
+    # Parse the meta redirect string which looks like 0;URL=http://foo.com
+    def parse_meta_redirect_string(meta_string)
+      meta_string = meta_string.downcase
+      temp = meta_string.split(";url=", 2)
+      return if temp.length != 2
+      redirect = URI(temp[1])
+      # Some users may have a meta redirect to a completely different website.
+      if in_domain?(redirect)
+        redirect
+      else
+        nil
+      end
+    end
   end
+
 end
