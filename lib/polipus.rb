@@ -343,8 +343,14 @@ module Polipus
         end
 
         # Check against robots.txt checker
-        if @options[:robots_checker] && !@options[:robots_checker].allowed?(url)
-          return false
+        if @options[:robots_checker]
+          # Sometimes the robots checker throws an error, just allow the URL then
+          begin
+            if !@options[:robots_checker].allowed?(url)
+              return false
+            end
+          rescue
+          end
         end
         true
       end
