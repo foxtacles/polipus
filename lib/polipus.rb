@@ -101,10 +101,7 @@ module Polipus
       @signal_handler = PolipusSignalHandler.new
 
       @logger       = @options[:logger]  ||= Logger.new(nil)
-      
-      unless @logger.is_a?(Log4r::Logger)
-        @logger.level = @options[:logger_level] ||= Logger::INFO  
-      end
+      @logger.level = @options[:logger_level] ||= Logger::INFO  
       
       @storage      = @options[:storage] ||= Storage.dev_null
 
