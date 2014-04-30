@@ -10,6 +10,7 @@ module Polipus
 
     def initialize(opts = {})
       @connections = {}
+      @connections_hits = {}
       @opts = opts
     end
 
@@ -77,14 +78,24 @@ module Polipus
     # The proxy address string
     #
     def proxy_host
-      @opts[:proxy_host]
+      return proxy_host_port.first unless @opts[:proxy_host_port].nil?
+      @opts[:proxy_host].respond_to?(:call) ? @opts[:proxy_host].call(self) : @opts[:proxy_host]
     end
 
     #
     # The proxy port
     #
     def proxy_port
-      @opts[:proxy_port]
+      return proxy_host_port.last unless @opts[:proxy_host_port].nil?
+      @opts[:proxy_port].respond_to?(:call) ? @opts[:proxy_port].call(self) : @opts[:proxy_port]
+    end
+
+    #
+    # Shorthand to get proxy info with a single call
+    # It returns an array of ['addr', port]
+    #
+    def proxy_host_port
+      @opts[:proxy_host_port].respond_to?(:call) ? @opts[:proxy_host_port].call(self) : @opts[:proxy_host_port]
     end
 
     #
@@ -92,6 +103,13 @@ module Polipus
     #
     def read_timeout
       @opts[:read_timeout]
+    end
+
+    #
+    # HTTP open timeout in seconds
+    #
+    def open_timeout
+      @opts[:open_timeout]
     end
 
     # Does this HTTP client accept cookies from the server?
@@ -151,19 +169,29 @@ module Polipus
         response_time = ((finish - start) * 1000).round
         cookie_jar.parse(response["set-cookie"], url) if accept_cookies? && response["set-cookie"]
         return response, response_time
-      rescue Timeout::Error, Net::HTTPBadResponse, EOFError => e
+      rescue StandardError => e
         
         puts e.inspect if verbose?
         refresh_connection(url)
         retries += 1
-        retry unless retries > 3
+        unless retries > 3
+          retry 
+        else
+          raise e
+        end
       end
     end
 
     def connection(url)
       @connections[url.host] ||= {}
+      @connections_hits[url.host] ||= {}
 
       if conn = @connections[url.host][url.port]
+        if @opts[:connection_max_hits] && @connections_hits[url.host][url.port] >= @opts[:connection_max_hits]
+          @opts[:logger].debug {"Connection #{url.host}:#{url.port} is staled, refreshing"} if @opts[:logger]
+          return refresh_connection url
+        end
+        @connections_hits[url.host][url.port] += 1
         return conn
       end
 
@@ -171,15 +199,22 @@ module Polipus
     end
 
     def refresh_connection(url)
+      proxy_host, proxy_port = proxy_host_port unless @opts[:proxy_host_port].nil?
+
+      if @opts[:logger] && proxy_host && proxy_port
+        @opts[:logger].debug {"Request #{url} using proxy: #{proxy_host}:#{proxy_port}"}
+      end
+
       http = Net::HTTP.new(url.host, url.port, proxy_host, proxy_port)
 
       http.read_timeout = read_timeout if !!read_timeout
+      http.open_timeout = open_timeout if !!open_timeout
 
       if url.scheme == 'https'
         http.use_ssl = true
         http.verify_mode = OpenSSL::SSL::VERIFY_NONE
       end
-
+      @connections_hits[url.host][url.port] = 1
       @connections[url.host][url.port] = http.start 
     end
 

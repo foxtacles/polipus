@@ -32,11 +32,17 @@ module Polipus
 
     attr_accessor :aliases
 
+    attr_accessor :domain_aliases
+
+    # Whether the current page should be stored
+    # Default: true  
+    attr_accessor :storable
+
     #
     # Create a new page
     #
     def initialize(url, params = {})
-      @url = url
+      @url = url.kind_of?(URI) ? url : URI(url)
       @code = params[:code]
       @headers = params[:headers] || {}
       @headers['content-type'] ||= ['']
@@ -50,7 +56,8 @@ module Polipus
       @fetched = !params[:code].nil?
       @user_data = OpenStruct.new
       @success_http_response_codes = params[:success_http_response_codes]
-
+      @domain_aliases = params[:domain_aliases] ||= []
+      @storable = true
     end
 
     #
@@ -174,14 +181,6 @@ module Polipus
       return absolute
     end
 
-    #
-    # Returns +true+ if *uri* is in the same domain as the page, returns
-    # +false+ otherwise
-    #
-    def in_domain?(uri)
-      uri.host == @url.host || uri.host == "www.#{@url.host}"
-    end
-
     # Check if the page has valid http response codes.
     def success_http_response?
       if @success_http_response_codes
@@ -189,6 +188,15 @@ module Polipus
       else
         (200..226).include?(@code)
       end
+    end
+
+    #
+    # Returns +true+ if *uri* is in the same domain as the page, returns
+    # +false+ otherwise
+    #
+    def in_domain?(uri)
+      @domain_aliases ||= []
+      uri.host == @url.host || @domain_aliases.include?(uri.host) || uri.host == "www.#{@url.host}"
     end
 
     def to_hash
@@ -211,6 +219,10 @@ module Polipus
       th.each {|k,v| th.delete(k) if v.nil? || (v.respond_to?(:empty?) && v.empty?)}
       th.delete('headers') if content_type.empty?
       th.to_json
+    end
+
+    def storable?
+      @storable
     end
 
     def self.from_hash(hash)

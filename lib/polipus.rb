@@ -38,6 +38,8 @@ module Polipus
       :proxy_port => false,
       # HTTP read timeout in seconds
       :read_timeout => 30,
+      # HTTP open connection timeout in seconds
+      :open_timeout => 10,
       # An URL tracker instance. default is Bloomfilter based on redis
       :url_tracker => nil,
       # A Redis options {} that will be passed directly to Redis.new
@@ -62,6 +64,11 @@ module Polipus
       :robots_checker => false,
       # Valid http status codes. False to use default, or an array: [200, 201, 301].
       :success_http_response_codes => false
+      # A set of hosts that should be considered parts of the same domain
+      # Eg It can be used to follow links with and without 'www' domain
+      :domain_aliases => [],
+      # Mark a connection as staled after connection_max_hits request
+      :connection_max_hits => nil
     }
 
     attr_reader :storage
@@ -85,7 +92,6 @@ module Polipus
 
       @job_name     = job_name
       @options      = OPTS.merge(options)
-      @logger       = @options[:logger] ||= Logger.new(nil)
 
       # Initialize the robots.txt checker
       if @options[:robots_checker]
@@ -94,7 +100,13 @@ module Polipus
 
       @signal_handler = PolipusSignalHandler.new
 
-      @storage      = @options[:storage]     ||= Storage.dev_null
+      @logger       = @options[:logger]  ||= Logger.new(nil)
+      
+      unless @logger.is_a?(Log4r::Logger)
+        @logger.level = @options[:logger_level] ||= Logger::INFO  
+      end
+      
+      @storage      = @options[:storage] ||= Storage.dev_null
 
       @http_pool    = []
       @workers_pool = []
@@ -199,10 +211,14 @@ module Polipus
 
             incr_error if page.error
 
-            @storage.add page unless page.nil?
+            if page && page.storable?
+              @storage.add page
+            end
             
-            @logger.debug {"[worker ##{worker_number}] Fetched page: [#{page.url.to_s}] Referer: [#{page.referer}] Depth: [#{page.depth}] Code: [#{page.code}] Response Time: [#{page.response_time}]"}
-            @logger.info  {"[worker ##{worker_number}] Page [#{page.url.to_s}] downloaded"}
+            if page
+              @logger.debug {"[worker ##{worker_number}] Fetched page: [#{page.url.to_s}] Referer: [#{page.referer}] Depth: [#{page.depth}] Code: [#{page.code}] Response Time: [#{page.response_time}]"}
+              @logger.info  {"[worker ##{worker_number}] Page [#{page.url.to_s}] downloaded"}
+            end
             
             incr_pages
 
@@ -269,6 +285,9 @@ module Polipus
       self
     end
 
+    # A block of code will be executed
+    # on every page donloaded. The code is used to extract urls to visit
+    # see links_for method
     def focus_crawl(&block)
       @focus_crawl_block = block
       self
@@ -357,6 +376,7 @@ module Polipus
 
       # It extracts URLs from the page
       def links_for page
+        page.domain_aliases = domain_aliases
         links = @focus_crawl_block.nil? ? page.links : @focus_crawl_block.call(page)
         links
       end
