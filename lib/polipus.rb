@@ -63,7 +63,7 @@ module Polipus
       # discarded
       :robots_checker => false,
       # Valid http status codes. False to use default, or an array: [200, 201, 301].
-      :success_http_response_codes => false
+      :success_http_response_codes => false,
       # A set of hosts that should be considered parts of the same domain
       # Eg It can be used to follow links with and without 'www' domain
       :domain_aliases => [],
