@@ -12,6 +12,7 @@ module Polipus
       @connections = {}
       @connections_hits = {}
       @opts = opts
+      @opts[:domain_aliases] ||= []
     end
 
     #
@@ -226,7 +227,7 @@ module Polipus
     # Allowed to connect to the requested url?
     #
     def allowed?(to_url, from_url)
-      to_url.host.nil? || (to_url.host == from_url.host)
+      to_url.host.nil? || (to_url.host == from_url.host) || @opts[:domain_aliases].include?(to_url.host)
     end
 
   end
